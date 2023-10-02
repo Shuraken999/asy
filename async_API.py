@@ -8,13 +8,14 @@ from models import Base, Session, SwapiPeople, engine
 
 MAX_REQUESTS_CHUNK = 5
 
+
 # Занесение данных в БД
 async def insert_people(people_list_json):
     people_list = [SwapiPeople(
                                name=person.get('name'),
                                birth_year=person.get('birth_year'),
                                eye_color=person.get('eye_color'),
-                               films=person.get('films'),
+                               films=await insert_prm(person.get('films'),1),
                                gender=person.get('gender'),
                                hair_color=person.get('hair_color'),
                                height=person.get('height'),
@@ -23,14 +24,51 @@ async def insert_people(people_list_json):
                                skin_color=person.get('skin_color'),
                                created=person.get('created'),
                                edited=person.get('edited'),
-                               species=person.get('species'),
-                               starships=person.get('starships'),
+                               species=await insert_prm(person.get('species'),2),
+                               starships=await insert_prm(person.get('starships'), 3),
                                url=person.get('url'),
-                               vehicles=person.get('vehicles')
+                               vehicles=await insert_prm(person.get('vehicles'),4)
                                 ) for person in people_list_json]
     async with Session() as session:
         session.add_all(people_list)
         await session.commit()
+
+# Создание полного списка одного из параметров(все фильмы, все специальности и др.)
+# Пареметры имеющие множественное значение
+async def insert_prm(json_p, prm):
+    list_prm = []
+    if json_p == [] or json_p is None:
+        return None
+    else:
+        if prm == 1:
+            for per in json_p:
+                roster = await json_prm(per)
+                list_prm.append(roster.get('title'))
+            return list_prm
+        elif prm == 2:
+            for per in json_p:
+                roster = await json_prm(per)
+                list_prm.append(roster.get('name'))
+            return list_prm
+        elif prm == 3:
+            for per in json_p:
+                roster = await json_prm(per)
+                list_prm.append(roster.get('starship_class'))
+            return list_prm
+        elif prm == 4:
+            for per in json_p:
+                roster = await json_prm(per)
+                list_prm.append(roster.get('vehicle_class'))
+            return list_prm
+
+# Получение единицы определенного параметра героя(одного фильма, одной специальности и т.к.)
+async def json_prm(json_p):
+    session = aiohttp.ClientSession()
+    response = await session.get(json_p)
+    json_data = await response.json()
+    await session.close()
+    return json_data
+
 
 # Обращение за данными по конкретному герою
 async def get_people(people_id):
